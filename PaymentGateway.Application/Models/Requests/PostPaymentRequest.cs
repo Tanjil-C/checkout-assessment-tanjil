@@ -1,4 +1,4 @@
-﻿namespace PaymentGateway.Api.Models.Requests;
+﻿namespace PaymentGateway.Application.Models.Requests;
 
 public class PostPaymentRequest
 {
