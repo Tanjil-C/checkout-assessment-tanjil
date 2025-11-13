@@ -1,12 +1,8 @@
 ﻿using System.Text.Json.Serialization;
-
 using FluentValidation;
-
 using MediatR;
-
 using PaymentGateway.Application.Commands.Rules;
 using PaymentGateway.Application.Interfaces;
-using PaymentGateway.Application.Models.Requests;
 using PaymentGateway.Domain.Enums;
 namespace PaymentGateway.Application.Commands.CreatePayment;
 
@@ -24,7 +20,15 @@ public record PaymentCommandDto
         ? string.Empty : CardNumber.Replace(" ", "").Replace("-", "");
 }
 
-public record CreatePaymentCommad : PaymentCommandDto, IRequest<Guid>
+public record PaymentResponseDto
+{
+    public Guid Id { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AcquiringStatus AcquiringStatus { get; set; }
+}
+
+public record CreatePaymentCommand : PaymentCommandDto, IRequest<PaymentResponseDto>
 {
 }
 
@@ -65,7 +69,7 @@ public class CreatePaymentValidator : AbstractValidator<PaymentCommandDto>
             .Matches(@"^\d{3,4}$").WithMessage("CVV must be numeric and 3 to 4 digits long.");
     }
 
-    public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommad, Guid>
+    public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, PaymentResponseDto>
     {
         private readonly IsSupported _isSupported;
         private readonly IPaymentRepository _paymentRepository;
@@ -79,7 +83,7 @@ public class CreatePaymentValidator : AbstractValidator<PaymentCommandDto>
         }
 
 
-        public async Task<Guid> Handle(CreatePaymentCommad request, CancellationToken cancellationToken)
+        public async Task<PaymentResponseDto> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
         {
             var supported = await _isSupported.EvaluateAsync(request.Currency);
             if (!supported) throw new InvalidOperationException($"Unsupported currency: {request.Currency}");
@@ -96,14 +100,21 @@ public class CreatePaymentValidator : AbstractValidator<PaymentCommandDto>
                 Cvv = request.Cvv
             };
 
-            var result = await _acquiringBankHttpClient.AuthorizeAsync(acquiringRequest);
 
-            if (result.Status != AcquiringStatus.Authorized)
-                throw new InvalidOperationException("Error authorizing request with bank. ");
+            // In a production system, we would wrap the bank response in a richer object containing both the status and HTTP response code for logging, diagnostics, and traceability.  
+            // For this assessment, that detail is omitted to keep the implementation focused and concise.
+            var status = await _acquiringBankHttpClient.AuthorizeAsync(acquiringRequest);
 
-            var id = await _paymentRepository.SaveAsync(request, result.Status);
-
-            return id;
+            if (status != AcquiringStatus.Authorized)
+            {
+                return new PaymentResponseDto
+                {
+                    Id = Guid.Empty,
+                    AcquiringStatus = AcquiringStatus.Declined
+                };
+            }
+            var id = await _paymentRepository.SaveAsync(request, status);
+            return new PaymentResponseDto() { Id = id, AcquiringStatus = status };
         }
     }
 }

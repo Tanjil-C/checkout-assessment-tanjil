@@ -5,5 +5,5 @@ namespace PaymentGateway.Application.Interfaces;
 
 public interface IPaymentRepository
 {
-    Task<Guid> SaveAsync(CreatePaymentCommad command, AcquiringStatus status);
+    Task<Guid> SaveAsync(CreatePaymentCommand command, AcquiringStatus status);
 }

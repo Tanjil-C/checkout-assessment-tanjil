@@ -41,7 +41,7 @@ public class PaymentRepository : IPaymentRepository
         }
     };
 
-    public Task<Guid> SaveAsync(CreatePaymentCommad command, AcquiringStatus status)
+    public Task<Guid> SaveAsync(CreatePaymentCommand command, AcquiringStatus status)
     {
         var payment = new Payment()
         {

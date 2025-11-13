@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace PaymentGateway.Application.Models.Requests;
+namespace PaymentGateway.Application;
 
 public sealed class AcquiringRequest
 {

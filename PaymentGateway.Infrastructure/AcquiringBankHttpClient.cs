@@ -1,36 +1,40 @@
-﻿using System.Net;
-using System.Net.Http.Json;
-
+﻿using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using PaymentGateway.Application;
 using PaymentGateway.Application.Interfaces;
+using PaymentGateway.Domain;
+using PaymentGateway.Domain.Enums;
 
 namespace PaymentGateway.Infrastructure;
 
 public class AcquiringBankHttpClient : IAcquiringBankHttpClient
 {
     private readonly HttpClient _httpClient;
-    private const string Endpoint = "payments";
+    private const string Endpoint = $"{PaymentConstants.Endpoint}";
     public AcquiringBankHttpClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
-    public async Task<AcquiringResult> AuthorizeAsync(AcquiringRequest request)
+    public async Task<AcquiringStatus> AuthorizeAsync(AcquiringRequest request)
     {
         var response = await _httpClient.PostAsJsonAsync(Endpoint, request);
 
-        if (response.StatusCode == HttpStatusCode.BadRequest)
-            return new AcquiringResult(AcquiringStatus.BadRequest, null);
-
-        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
-            return new AcquiringResult(AcquiringStatus.Unavailable, null);
-
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            return AcquiringStatus.Declined;
 
         var body = await response.Content.ReadFromJsonAsync<BankResponse>();
 
-        return new AcquiringResult(
-            body?.Authorized == true ? AcquiringStatus.Authorized : AcquiringStatus.Declined,
-            body?.AuthorizationCode
-        );
+        if (body?.Authorized == true) return AcquiringStatus.Authorized;
+
+        return AcquiringStatus.Declined;
 
     }
+}
+
+public class BankResponse
+{
+    [JsonPropertyName("authorized")]
+    public bool Authorized { get; set; }
+    [JsonPropertyName("authorization_code")]
+    public string? AuthorizationCode { get; set; }
 }

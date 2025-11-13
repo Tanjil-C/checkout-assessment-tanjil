@@ -1,9 +1,8 @@
-﻿using PaymentGateway.Application.Models.Requests;
-using PaymentGateway.Application.Models.Responses;
+﻿using PaymentGateway.Domain.Enums;
 
 namespace PaymentGateway.Application.Interfaces;
 
 public interface IAcquiringBankHttpClient
 {
-    Task<AcquiringResult> AuthorizeAsync(AcquiringRequest request);
+    Task<AcquiringStatus> AuthorizeAsync(AcquiringRequest request);
 }
