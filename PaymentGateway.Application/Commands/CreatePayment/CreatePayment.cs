@@ -32,7 +32,7 @@ public record CreatePaymentCommand : PaymentCommandDto, IRequest<PaymentResponse
 {
 }
 
-public class CreatePaymentValidator : AbstractValidator<PaymentCommandDto>
+public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
 {
 
     public CreatePaymentValidator(ICurrencyService currencyService)

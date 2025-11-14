@@ -1,5 +1,8 @@
 ﻿using FluentValidation;
 
+using MediatR;
+
+using PaymentGateway.Api.Middleware;
 using PaymentGateway.Application.Commands.CreatePayment;
 using PaymentGateway.Application.Commands.Rules;
 using PaymentGateway.Application.Interfaces;
@@ -17,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAcquiringBankHttpClient, AcquiringBankHttpClient>();
         services.AddSingleton<ICurrencyService, CurrencyService>();
         services.AddScoped<IsSupported>();
+        services.AddTransient<IPipelineBehavior<CreatePaymentCommand, PaymentResponseDto>, CreatePaymentValidationBehaviour>();
         services.AddHttpClient<IAcquiringBankHttpClient, AcquiringBankHttpClient>(client =>
         {
             client.BaseAddress = new Uri("http://localhost:8080/");

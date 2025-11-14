@@ -1,7 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using PaymentGateway.Application.Commands.CreatePayment;
-using PaymentGateway.Domain;
 
 namespace PaymentGateway.Api.Controllers;
 

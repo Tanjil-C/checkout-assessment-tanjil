@@ -3,5 +3,6 @@
 public enum AcquiringStatus
 {
     Authorized,    
-    Declined,       
+    Declined,
+    Rejected
 }
