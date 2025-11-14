@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using PaymentGateway.Application.Commands.CreatePayment;
+using PaymentGateway.Application.Queries;
 
 namespace PaymentGateway.Api.Controllers;
 
@@ -15,10 +16,17 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreatePayment(CreatePaymentCommand createPaymentCommand)
+    public async Task<IActionResult> CreatePayment(CreatePaymentCommand command)
     {
-        var response = await _sender.Send(createPaymentCommand);
+        var response = await _sender.Send(command);
+        return Ok(response);
+    }
 
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPayment(Guid id)
+    {
+        var command = new GetPaymentCommand(id);
+        var response = await _sender.Send(command);
         return Ok(response);
     }
 }

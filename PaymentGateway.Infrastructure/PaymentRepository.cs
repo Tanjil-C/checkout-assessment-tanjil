@@ -58,4 +58,22 @@ public class PaymentRepository : IPaymentRepository
 
         return Task.FromResult(payment.Id);
     }
+
+    public Task<Payment> GetPayment(Guid id)
+    {
+        var payment = _payments.FirstOrDefault(x => x.Id.Equals(id));
+
+        if (payment == null)
+        {
+            var result = new Payment
+            {
+                Id = Guid.Empty,
+                Status = AcquiringStatus.Authorized,
+            };
+
+            return Task.FromResult(result);
+        }
+
+        return Task.FromResult(payment);
+    }
 }

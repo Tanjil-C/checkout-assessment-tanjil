@@ -6,6 +6,7 @@ using PaymentGateway.Api.Middleware;
 using PaymentGateway.Application.Commands.CreatePayment;
 using PaymentGateway.Application.Commands.Rules;
 using PaymentGateway.Application.Interfaces;
+using PaymentGateway.Application.Queries;
 using PaymentGateway.Infrastructure;
 
 namespace PaymentGateway.Api.Extensions;
@@ -20,7 +21,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAcquiringBankHttpClient, AcquiringBankHttpClient>();
         services.AddSingleton<ICurrencyService, CurrencyService>();
         services.AddScoped<IsSupported>();
-        services.AddTransient<IPipelineBehavior<CreatePaymentCommand, PaymentResponseDto>, CreatePaymentValidationBehaviour>();
+        services.AddTransient<IPipelineBehavior<CreatePaymentCommand, PaymentResponseDto<Guid>>, CreatePaymentValidationBehaviour>();
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetPaymentCommand).Assembly));
+        services.AddValidatorsFromAssembly(typeof(GetPaymentValidator).Assembly);
         services.AddHttpClient<IAcquiringBankHttpClient, AcquiringBankHttpClient>(client =>
         {
             client.BaseAddress = new Uri("http://localhost:8080/");

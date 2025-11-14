@@ -20,15 +20,14 @@ public record PaymentCommandDto
         ? string.Empty : CardNumber.Replace(" ", "").Replace("-", "");
 }
 
-public record PaymentResponseDto
+public record PaymentResponseDto<T>
 {
-    public Guid Id { get; set; }
-
+    public T? Value { get; set;}
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public AcquiringStatus AcquiringStatus { get; set; }
 }
 
-public record CreatePaymentCommand : PaymentCommandDto, IRequest<PaymentResponseDto>
+public record CreatePaymentCommand : PaymentCommandDto, IRequest<PaymentResponseDto<Guid>>
 {
 }
 
@@ -69,7 +68,7 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
             .Matches(@"^\d{3,4}$").WithMessage("CVV must be numeric and 3 to 4 digits long.");
     }
 
-    public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, PaymentResponseDto>
+    public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, PaymentResponseDto<Guid>>
     {
         private readonly IsSupported _isSupported;
         private readonly IPaymentRepository _paymentRepository;
@@ -83,7 +82,7 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
         }
 
 
-        public async Task<PaymentResponseDto> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
+        public async Task<PaymentResponseDto<Guid>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
         {
             var supported = await _isSupported.EvaluateAsync(request.Currency);
             if (!supported) throw new InvalidOperationException($"Unsupported currency: {request.Currency}");
@@ -107,14 +106,14 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
 
             if (status != AcquiringStatus.Authorized)
             {
-                return new PaymentResponseDto
+                return new PaymentResponseDto<Guid>
                 {
-                    Id = Guid.Empty,
+                    Value = Guid.Empty,
                     AcquiringStatus = AcquiringStatus.Declined
                 };
             }
             var id = await _paymentRepository.SaveAsync(request, status);
-            return new PaymentResponseDto() { Id = id, AcquiringStatus = status };
+            return new PaymentResponseDto<Guid>() { Value = id, AcquiringStatus = status };
         }
     }
 }
