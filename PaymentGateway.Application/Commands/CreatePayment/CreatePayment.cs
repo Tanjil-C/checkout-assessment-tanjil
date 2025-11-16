@@ -67,53 +67,53 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
             .NotEmpty().WithMessage("CVV is required.")
             .Matches(@"^\d{3,4}$").WithMessage("CVV must be numeric and 3 to 4 digits long.");
     }
+}
 
-    public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, PaymentResponseDto<Guid>>
+public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, PaymentResponseDto<Guid>>
+{
+    private readonly IsSupported _isSupported;
+    private readonly IPaymentRepository _paymentRepository;
+    private readonly IAcquiringBankHttpClient _acquiringBankHttpClient;
+
+    public CreatePaymentHandler(IsSupported isSupported, IPaymentRepository paymentRepository, IAcquiringBankHttpClient acquiringBankHttpClient)
     {
-        private readonly IsSupported _isSupported;
-        private readonly IPaymentRepository _paymentRepository;
-        private readonly IAcquiringBankHttpClient _acquiringBankHttpClient;
+        _isSupported = isSupported;
+        _paymentRepository = paymentRepository;
+        _acquiringBankHttpClient = acquiringBankHttpClient;
+    }
 
-        public CreatePaymentHandler(IsSupported isSupported, IPaymentRepository paymentRepository, IAcquiringBankHttpClient acquiringBankHttpClient)
+
+    public async Task<PaymentResponseDto<Guid>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
+    {
+        var supported = await _isSupported.EvaluateAsync(request.Currency);
+        if (!supported) throw new InvalidOperationException($"Unsupported currency: {request.Currency}");
+        // Note: idempotency should be applied in production to prevent duplicate charges.
+        // Omitted here for simplicity in this assessment.
+
+        var acquiringRequest = new AcquiringRequest
         {
-            _isSupported = isSupported;
-            _paymentRepository = paymentRepository;
-            _acquiringBankHttpClient = acquiringBankHttpClient;
-        }
+            CardNumber = request.NormalizedCardNumber,
+            ExpiryMonth = request.ExpiryMonth,
+            ExpiryYear = request.ExpiryYear,
+            Currency = request.Currency,
+            Amount = request.Amount,
+            Cvv = request.Cvv
+        };
 
 
-        public async Task<PaymentResponseDto<Guid>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
+        // In a production system, we would wrap the bank response in a richer object containing both the status and HTTP response code for logging, diagnostics, and traceability.  
+        // For this assessment, that detail is omitted to keep the implementation focused and concise.
+        var status = await _acquiringBankHttpClient.AuthorizeAsync(acquiringRequest);
+
+        if (status != AcquiringStatus.Authorized)
         {
-            var supported = await _isSupported.EvaluateAsync(request.Currency);
-            if (!supported) throw new InvalidOperationException($"Unsupported currency: {request.Currency}");
-            // Note: idempotency should be applied in production to prevent duplicate charges.
-            // Omitted here for simplicity in this assessment.
-
-            var acquiringRequest = new AcquiringRequest
+            return new PaymentResponseDto<Guid>
             {
-                CardNumber = request.NormalizedCardNumber,
-                ExpiryMonth = request.ExpiryMonth,
-                ExpiryYear = request.ExpiryYear,
-                Currency = request.Currency,
-                Amount = request.Amount,
-                Cvv = request.Cvv
+                Value = Guid.Empty,
+                AcquiringStatus = AcquiringStatus.Declined
             };
-
-
-            // In a production system, we would wrap the bank response in a richer object containing both the status and HTTP response code for logging, diagnostics, and traceability.  
-            // For this assessment, that detail is omitted to keep the implementation focused and concise.
-            var status = await _acquiringBankHttpClient.AuthorizeAsync(acquiringRequest);
-
-            if (status != AcquiringStatus.Authorized)
-            {
-                return new PaymentResponseDto<Guid>
-                {
-                    Value = Guid.Empty,
-                    AcquiringStatus = AcquiringStatus.Declined
-                };
-            }
-            var id = await _paymentRepository.SaveAsync(request, status);
-            return new PaymentResponseDto<Guid>() { Value = id, AcquiringStatus = status };
         }
+        var id = await _paymentRepository.SaveAsync(request, status);
+        return new PaymentResponseDto<Guid>() { Value = id, AcquiringStatus = status };
     }
 }
