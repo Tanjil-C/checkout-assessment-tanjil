@@ -1,26 +1,32 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-using PaymentGateway.Api.Models.Responses;
-using PaymentGateway.Api.Services;
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using PaymentGateway.Application.Commands.CreatePayment;
+using PaymentGateway.Application.Queries;
 
 namespace PaymentGateway.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class PaymentsController : Controller
+public class PaymentsController : ControllerBase
 {
-    private readonly PaymentsRepository _paymentsRepository;
-
-    public PaymentsController(PaymentsRepository paymentsRepository)
+    private readonly ISender _sender;
+    public PaymentsController(ISender sender)
     {
-        _paymentsRepository = paymentsRepository;
+        _sender = sender;   
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<PostPaymentResponse?>> GetPaymentAsync(Guid id)
+    [HttpPost]
+    public async Task<IActionResult> CreatePayment(CreatePaymentCommand command)
     {
-        var payment = _paymentsRepository.Get(id);
+        var response = await _sender.Send(command);
+        return Ok(response);
+    }
 
-        return new OkObjectResult(payment);
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPayment(Guid id)
+    {
+        var command = new GetPaymentCommand(id);
+        var response = await _sender.Send(command);
+        return Ok(response);
     }
 }
